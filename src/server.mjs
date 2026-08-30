@@ -217,7 +217,7 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
     if (req.method === "GET" && url.pathname === "/health") {
-      return send(res, 200, { ok: true, service: "metainfo-codex-oauth-proxy-v2", defaultModel: DEFAULT_MODEL });
+      return send(res, 200, { ok: true, service: "openai-codex-oauth-proxy", defaultModel: DEFAULT_MODEL });
     }
     if (!requireAuth(req)) return send(res, 401, { error: { message: "Unauthorized", type: "authentication_error" } });
     if (req.method === "GET" && url.pathname === "/v1/models") {
