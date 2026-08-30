@@ -1,0 +1,12 @@
+# OAuth credentials and deployment secrets
+.env
+*.env
+secrets/
+auth/
+*.json
+!package.json
+
+# Node and OS files
+node_modules/
+npm-debug.log*
+.DS_Store
