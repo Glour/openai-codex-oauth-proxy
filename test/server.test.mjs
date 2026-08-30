@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 
 process.env.NODE_ENV = "test";
-const { getCredentials } = await import("../src/server.mjs");
+const { buildUpstreamBody, getCredentials } = await import("../src/server.mjs");
 
 function jwt(payload) {
   return `x.${Buffer.from(JSON.stringify(payload)).toString("base64url")}.y`;
@@ -43,4 +43,28 @@ test("rejects a store without a Codex OAuth profile", async () => {
   const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "proxy-v2-")), "auth.json");
   fs.writeFileSync(file, JSON.stringify({ profiles: {} }));
   await assert.rejects(() => getCredentials(file), /no openai-codex OAuth credentials found/);
+});
+
+test("preserves Hermes Responses tool calls in the upstream request", () => {
+  const tools = [{ type: "function", name: "lookup_payment", parameters: { type: "object" } }];
+  const upstream = buildUpstreamBody({
+    model: "gpt-5.6-terra",
+    instructions: "Use the available tool when needed.",
+    input: [{ role: "user", content: "Check payment 42" }],
+    tools,
+    tool_choice: "auto",
+    parallel_tool_calls: true,
+    context_management: { mode: "compact" },
+    reasoning: { effort: "medium" },
+    prompt_cache_key: "hh-agent",
+  });
+
+  assert.equal(upstream.stream, true);
+  assert.equal(upstream.model, "gpt-5.6-terra");
+  assert.deepEqual(upstream.tools, tools);
+  assert.equal(upstream.tool_choice, "auto");
+  assert.equal(upstream.parallel_tool_calls, true);
+  assert.deepEqual(upstream.context_management, { mode: "compact" });
+  assert.deepEqual(upstream.reasoning, { effort: "medium" });
+  assert.ok(upstream.include.includes("reasoning.encrypted_content"));
 });

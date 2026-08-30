@@ -1,12 +1,13 @@
 # OpenAI Codex OAuth Proxy
 
-Small text-only adapter that exposes a subset of the OpenAI Responses API on a local HTTP port and sends requests through a ChatGPT Codex OAuth session.
+Small OpenAI Responses adapter that exposes a local HTTP port and sends requests through a ChatGPT Codex OAuth session.
 
 It is intended for internal services that support a custom OpenAI-compatible base URL, for example a Telegram bot or a background text-processing worker.
 
 ## What it supports
 
-- `POST /v1/responses`, non-streaming text requests
+- `POST /v1/responses`, both JSON and SSE streaming responses
+- Function tools are forwarded unchanged, so a compatible tool-executing client can continue its own loop
 - `GET /health`
 - `GET /v1/models`, protected by bearer token
 - Models verified with the current Codex OAuth account:
@@ -17,7 +18,7 @@ It is intended for internal services that support a custom OpenAI-compatible bas
 - OAuth access-token refresh and atomic credential-file replacement
 - Codex CLI `auth.json` and OpenClaw-style `auth-profiles.json` credential stores
 
-This is deliberately not a general gateway. It does not support streaming, tools, file input, previous-response chaining, or multiple OAuth refresh owners for one credential file.
+This is deliberately not a general gateway. It does not implement file input, previous-response chaining, or multiple OAuth refresh owners for one credential file. Tool execution remains with the client: the proxy only forwards tool definitions and function-call responses.
 
 ## Requirements
 

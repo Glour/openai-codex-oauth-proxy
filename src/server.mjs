@@ -6,7 +6,7 @@ const PORT = Number.parseInt(process.env.PORT || "8788", 10);
 const HOST = process.env.HOST || "0.0.0.0";
 const AUTH_FILE = process.env.CODEX_AUTH_FILE || "/auth-store/auth-profiles.json";
 const PROXY_TOKEN = process.env.PROXY_BEARER_TOKEN?.trim() || "";
-const DEFAULT_MODEL = process.env.OPENAI_MODEL?.trim() || "gpt-5.5";
+const DEFAULT_MODEL = process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna";
 const TIMEOUT_MS = Number.parseInt(process.env.REQUEST_TIMEOUT_MS || "120000", 10);
 const MAX_BODY_BYTES = 1024 * 1024;
 const CODEX_URL = "https://chatgpt.com/backend-api/codex/responses";
@@ -125,6 +125,50 @@ function outputText(response) {
     .join("");
 }
 
+function addIfDefined(target, source, field) {
+  if (source[field] !== undefined && source[field] !== null) target[field] = source[field];
+}
+
+/**
+ * Build a native Codex Responses request from the OpenAI-compatible input.
+ *
+ * Keep this deliberately narrow: these fields are understood by the Codex
+ * backend and are enough for Hermes' streamed tool loop.  In particular, do
+ * not collapse a tool call into output_text; consumers need the original
+ * `function_call` item to continue their own execution loop.
+ */
+export function buildUpstreamBody(body) {
+  const model = String(body.model || DEFAULT_MODEL).replace(/^openai-codex\//, "");
+  if (!MODEL_CANDIDATES.includes(model)) throw new Error(`model is not enabled in this proxy: ${model}`);
+  const input = normalizeInput(body.input);
+  if (!input.length) throw new Error("input is required");
+
+  const include = new Set(["reasoning.encrypted_content"]);
+  if (Array.isArray(body.include)) {
+    for (const item of body.include) if (typeof item === "string" && item) include.add(item);
+  }
+
+  const upstreamBody = {
+    model,
+    store: false,
+    stream: true,
+    instructions: String(body.instructions || "You are a concise text-processing service."),
+    input,
+    text: body.text || { verbosity: "low" },
+    include: [...include],
+  };
+  for (const field of [
+    "reasoning",
+    "tools",
+    "tool_choice",
+    "parallel_tool_calls",
+    "context_management",
+    "prompt_cache_key",
+    "prompt_cache_retention",
+  ]) addIfDefined(upstreamBody, body, field);
+  return upstreamBody;
+}
+
 async function parseSse(response) {
   if (!response.body) throw new Error("Codex returned no response body");
   const reader = response.body.getReader();
@@ -159,23 +203,9 @@ async function parseSse(response) {
   return { response: completed, text };
 }
 
-export async function codexResponse(body, credentials) {
+async function openCodexStream(body, credentials) {
   const activeCredentials = credentials || await getCredentials();
-  const model = String(body.model || DEFAULT_MODEL).replace(/^openai-codex\//, "");
-  if (!MODEL_CANDIDATES.includes(model)) throw new Error(`model is not enabled in this proxy: ${model}`);
-  const input = normalizeInput(body.input);
-  if (!input.length) throw new Error("input is required");
-  const upstreamBody = {
-    model,
-    store: false,
-    stream: true,
-    instructions: String(body.instructions || "You are a concise text-processing service."),
-    input,
-    text: body.text || { verbosity: "low" },
-    include: ["reasoning.encrypted_content"],
-    prompt_cache_key: body.prompt_cache_key,
-  };
-  if (body.reasoning) upstreamBody.reasoning = body.reasoning;
+  const upstreamBody = buildUpstreamBody(body);
   const result = await fetch(CODEX_URL, {
     method: "POST",
     headers: {
@@ -194,23 +224,43 @@ export async function codexResponse(body, credentials) {
     const message = (await result.text()).slice(0, 500);
     throw new Error(`Codex upstream HTTP ${result.status}: ${message || result.statusText}`);
   }
+  return result;
+}
+
+export async function codexResponse(body, credentials) {
+  const result = await openCodexStream(body, credentials);
   const { response, text } = await parseSse(result);
   return {
+    ...response,
     id: response.id || `resp_${crypto.randomUUID()}`,
-    object: "response",
-    created_at: Math.floor(Date.now() / 1000),
+    object: response.object || "response",
+    created_at: response.created_at || Math.floor(Date.now() / 1000),
     status: response.status || "completed",
-    model,
-    output_text: text,
-    output: [{
-      id: response.id ? `${response.id}_message` : `msg_${crypto.randomUUID()}`,
-      type: "message",
-      role: "assistant",
-      status: "completed",
-      content: [{ type: "output_text", text, annotations: [] }],
-    }],
-    usage: response.usage || {},
+    model: response.model || buildUpstreamBody(body).model,
+    output_text: outputText(response) || text,
   };
+}
+
+async function streamCodexResponse(res, body) {
+  const upstream = await openCodexStream(body);
+  if (!upstream.body) throw new Error("Codex returned no response body");
+  res.writeHead(200, {
+    "content-type": "text/event-stream; charset=utf-8",
+    "cache-control": "no-cache, no-store",
+    connection: "keep-alive",
+    "x-accel-buffering": "no",
+  });
+  const reader = upstream.body.getReader();
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      res.write(Buffer.from(value));
+    }
+    res.end();
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 const server = http.createServer(async (req, res) => {
@@ -225,9 +275,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === "POST" && url.pathname === "/v1/responses") {
       const body = await readJson(req);
-      if (body.stream === true) {
-        return send(res, 400, { error: { message: "stream=true is not supported by this text-only proxy", type: "invalid_request_error" } });
-      }
+      if (body.stream === true) return await streamCodexResponse(res, body);
       return send(res, 200, await codexResponse(body));
     }
     return send(res, 404, { error: { message: "Route not found" } });
