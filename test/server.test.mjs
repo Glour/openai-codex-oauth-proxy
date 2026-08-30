@@ -24,6 +24,21 @@ test("reads the Codex OAuth profile without exposing its token", async () => {
   assert.ok(credentials.access.length > 10);
 });
 
+test("reads a standalone Codex CLI auth.json", async () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "proxy-v2-")), "auth.json");
+  fs.writeFileSync(file, JSON.stringify({
+    auth_mode: "chatgpt",
+    tokens: {
+      access_token: jwt({ "https://api.openai.com/auth": { chatgpt_account_id: "account-standalone" } }),
+      refresh_token: "refresh-standalone",
+      account_id: "account-standalone",
+    },
+  }));
+  const credentials = await getCredentials(file);
+  assert.equal(credentials.profileId, "codex-cli");
+  assert.equal(credentials.accountId, "account-standalone");
+});
+
 test("rejects a store without a Codex OAuth profile", async () => {
   const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "proxy-v2-")), "auth.json");
   fs.writeFileSync(file, JSON.stringify({ profiles: {} }));

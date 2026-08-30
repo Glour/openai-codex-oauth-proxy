@@ -52,7 +52,7 @@ The example publishes only `127.0.0.1:8092`. Keep it local and put a trusted pri
 ```text
 base_url = http://127.0.0.1:8092/v1
 api_key = value of PROXY_BEARER_TOKEN
-model = gpt-5.6-terra
+model = gpt-5.6-luna
 ```
 
 Example request:
@@ -62,7 +62,7 @@ curl http://127.0.0.1:8092/v1/responses \
   -H "Authorization: Bearer $PROXY_BEARER_TOKEN" \
   -H 'content-type: application/json' \
   --data '{
-    "model": "gpt-5.6-terra",
+    "model": "gpt-5.6-luna",
     "instructions": "Reply with exactly: OK",
     "input": "health probe",
     "store": false

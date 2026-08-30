@@ -181,8 +181,8 @@ export async function codexResponse(body, credentials) {
     headers: {
       authorization: `Bearer ${activeCredentials.access}`,
       "chatgpt-account-id": activeCredentials.accountId,
-      originator: "metainfo-oauth-proxy-v2",
-      "user-agent": "metainfo-oauth-proxy-v2/0.1",
+      originator: "openai-codex-oauth-proxy",
+      "user-agent": "openai-codex-oauth-proxy/0.2",
       "openai-beta": "responses=experimental",
       accept: "text/event-stream",
       "content-type": "application/json",
@@ -237,4 +237,4 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-if (process.env.NODE_ENV !== "test") server.listen(PORT, HOST, () => console.log(`metainfo codex OAuth proxy v2 listening on ${HOST}:${PORT}`));
+if (process.env.NODE_ENV !== "test") server.listen(PORT, HOST, () => console.log(`OpenAI Codex OAuth proxy listening on ${HOST}:${PORT}`));
