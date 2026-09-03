@@ -19,4 +19,7 @@ jobs:
           node-version: 22
       - run: npm run check
       - run: npm test
-      - run: docker compose -f compose.yml config --quiet
+      - name: Validate Compose configuration
+        run: |
+          cp .env.example .env
+          docker compose -f compose.yml config --quiet
