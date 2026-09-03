@@ -20,6 +20,13 @@ It is intended for internal services that support a custom OpenAI-compatible bas
 
 This is deliberately not a general gateway. It does not implement file input, previous-response chaining, or multiple OAuth refresh owners for one credential file. Tool execution remains with the client: the proxy only forwards tool definitions and function-call responses.
 
+## Community
+
+- [Contributing guide](CONTRIBUTING.md)
+- [Code of conduct](CODE_OF_CONDUCT.md)
+- [Security policy](SECURITY.md)
+- [MIT License](LICENSE)
+
 ## Requirements
 
 - Docker and Docker Compose
