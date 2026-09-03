@@ -24,7 +24,7 @@ function send(res, status, payload) {
 }
 
 function requireAuth(req) {
-  return !PROXY_TOKEN || req.headers.authorization === `Bearer ${PROXY_TOKEN}`;
+  return Boolean(PROXY_TOKEN) && req.headers.authorization === `Bearer ${PROXY_TOKEN}`;
 }
 
 async function readJson(req) {
@@ -169,7 +169,7 @@ export function buildUpstreamBody(body) {
   return upstreamBody;
 }
 
-async function parseSse(response) {
+export async function parseSse(response) {
   if (!response.body) throw new Error("Codex returned no response body");
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -199,7 +199,6 @@ async function parseSse(response) {
   }
   if (!completed) throw new Error("Codex stream ended without a completed response");
   const text = outputText(completed) || deltaText;
-  if (!text) throw new Error("Codex returned empty output");
   return { response: completed, text };
 }
 

@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 
 process.env.NODE_ENV = "test";
-const { buildUpstreamBody, getCredentials } = await import("../src/server.mjs");
+const { buildUpstreamBody, getCredentials, parseSse } = await import("../src/server.mjs");
 
 function jwt(payload) {
   return `x.${Buffer.from(JSON.stringify(payload)).toString("base64url")}.y`;
@@ -67,4 +67,13 @@ test("preserves Hermes Responses tool calls in the upstream request", () => {
   assert.deepEqual(upstream.context_management, { mode: "compact" });
   assert.deepEqual(upstream.reasoning, { effort: "medium" });
   assert.ok(upstream.include.includes("reasoning.encrypted_content"));
+});
+
+test("keeps a completed function-call response without requiring output text", async () => {
+  const response = new Response(
+    'data: {"type":"response.completed","response":{"id":"resp_tool","output":[{"type":"function_call","name":"lookup_payment","arguments":"{}"}]}}\n\n',
+  );
+  const parsed = await parseSse(response);
+  assert.equal(parsed.text, "");
+  assert.equal(parsed.response.output[0].type, "function_call");
 });
