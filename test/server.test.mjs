@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 
 process.env.NODE_ENV = "test";
-const { buildUpstreamBody, getCredentials, parseSse } = await import("../src/server.mjs");
+const { buildClientResponse, buildUpstreamBody, getCredentials, parseSse } = await import("../src/server.mjs");
 
 function jwt(payload) {
   return `x.${Buffer.from(JSON.stringify(payload)).toString("base64url")}.y`;
@@ -76,4 +76,36 @@ test("keeps a completed function-call response without requiring output text", a
   const parsed = await parseSse(response);
   assert.equal(parsed.text, "");
   assert.equal(parsed.response.output[0].type, "function_call");
+});
+
+test("materializes delta-only text as a standard Responses message", () => {
+  const response = buildClientResponse({
+    id: "resp_test",
+    object: "response",
+    status: "completed",
+    model: "gpt-5.6-luna",
+    output: [],
+  }, "Готовый текст", { model: "gpt-5.6-luna", input: "Тест" });
+
+  assert.equal(response.output_text, "Готовый текст");
+  assert.equal(response.output.length, 1);
+  assert.equal(response.output[0].type, "message");
+  assert.equal(response.output[0].role, "assistant");
+  assert.deepEqual(response.output[0].content, [{
+    type: "output_text",
+    text: "Готовый текст",
+    annotations: [],
+    logprobs: [],
+  }]);
+});
+
+test("preserves tool calls while adding visible delta text", () => {
+  const toolCall = { type: "function_call", call_id: "call_1", name: "lookup", arguments: "{}" };
+  const response = buildClientResponse({ output: [toolCall] }, "Проверяю", {
+    model: "gpt-5.6-terra",
+    input: "Тест",
+  });
+
+  assert.deepEqual(response.output[0], toolCall);
+  assert.equal(response.output[1].content[0].text, "Проверяю");
 });

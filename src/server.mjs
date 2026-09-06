@@ -229,6 +229,28 @@ async function openCodexStream(body, credentials) {
 export async function codexResponse(body, credentials) {
   const result = await openCodexStream(body, credentials);
   const { response, text } = await parseSse(result);
+  return buildClientResponse(response, text, body);
+}
+
+/**
+ * Return a Responses API object that official SDKs can parse.
+ *
+ * The Codex stream can carry visible text only in delta events while the final
+ * response has an empty `output` array. A top-level `output_text` convenience
+ * field is not enough: official SDKs derive it from `output[].content[]`.
+ */
+export function buildClientResponse(response, text, body) {
+  const visibleText = outputText(response) || text;
+  const output = Array.isArray(response?.output) ? [...response.output] : [];
+  if (visibleText && !outputText({ output })) {
+    output.push({
+      id: `msg_${crypto.randomUUID()}`,
+      type: "message",
+      status: "completed",
+      role: "assistant",
+      content: [{ type: "output_text", text: visibleText, annotations: [], logprobs: [] }],
+    });
+  }
   return {
     ...response,
     id: response.id || `resp_${crypto.randomUUID()}`,
@@ -236,7 +258,8 @@ export async function codexResponse(body, credentials) {
     created_at: response.created_at || Math.floor(Date.now() / 1000),
     status: response.status || "completed",
     model: response.model || buildUpstreamBody(body).model,
-    output_text: outputText(response) || text,
+    output,
+    output_text: visibleText,
   };
 }
 
