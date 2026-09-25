@@ -88,15 +88,15 @@ Any SDK or framework that accepts an OpenAI-compatible endpoint needs:
 ```text
 base_url = http://127.0.0.1:8092/v1
 api_key = value of PROXY_BEARER_TOKEN
-model = gpt-5.6-luna
+model = gpt-6-luna
 ```
 
 | Model | Recommended use |
 | --- | --- |
-| `gpt-5.6-luna` | Default for high-volume, bounded text work |
-| `gpt-5.6-terra` | Higher-effort analysis and synthesis |
-| `gpt-5.6-sol` | Evaluate per workflow before production use |
-| `gpt-5.5` | Legacy compatibility where already required |
+| `gpt-6-luna` | High-volume, bounded text work |
+| `gpt-6-sol` | QA analysis and synthesis |
+| `gpt-6-astra` | Escalated complex analysis |
+| `gpt-5.5`, `gpt-5.6-luna`, `gpt-5.6-terra`, `gpt-5.6-sol` | Rollback compatibility |
 
 Choose models using measured result quality and latency. The proxy rejects
 models outside this list.
@@ -112,7 +112,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="gpt-5.6-luna",
+    model="gpt-6-luna",
     instructions="Reply with one concise sentence.",
     input="Describe the current task.",
 )
@@ -130,7 +130,7 @@ const client = new OpenAI({
 });
 
 const response = await client.responses.create({
-  model: "gpt-5.6-terra",
+  model: "gpt-6-sol",
   input: "Summarize the event.",
 });
 console.log(response.output_text);
@@ -152,7 +152,7 @@ curl http://127.0.0.1:8092/v1/responses \
   -H "Authorization: Bearer $PROXY_BEARER_TOKEN" \
   -H 'content-type: application/json' \
   --data '{
-    "model": "gpt-5.6-luna",
+    "model": "gpt-6-luna",
     "instructions": "Reply with exactly: OK",
     "input": "health probe",
     "store": false

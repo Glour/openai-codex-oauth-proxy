@@ -69,6 +69,21 @@ test("preserves Hermes Responses tool calls in the upstream request", () => {
   assert.ok(upstream.include.includes("reasoning.encrypted_content"));
 });
 
+test("accepts GPT-6 models through the existing OAuth Responses transport", () => {
+  for (const model of ["gpt-6-luna", "gpt-6-sol", "gpt-6-astra"]) {
+    const upstream = buildUpstreamBody({
+      model,
+      input: "health probe",
+      reasoning: { effort: "low" },
+      prompt_cache_options: { ttl: "30m" },
+    });
+    assert.equal(upstream.model, model);
+    assert.deepEqual(upstream.reasoning, { effort: "low" });
+    assert.deepEqual(upstream.prompt_cache_options, { ttl: "30m" });
+    assert.equal(upstream.store, false);
+  }
+});
+
 test("keeps a completed function-call response without requiring output text", async () => {
   const response = new Response(
     'data: {"type":"response.completed","response":{"id":"resp_tool","output":[{"type":"function_call","name":"lookup_payment","arguments":"{}"}]}}\n\n',

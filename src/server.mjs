@@ -6,7 +6,7 @@ const PORT = Number.parseInt(process.env.PORT || "8788", 10);
 const HOST = process.env.HOST || "0.0.0.0";
 const AUTH_FILE = process.env.CODEX_AUTH_FILE || "/auth-store/auth-profiles.json";
 const PROXY_TOKEN = process.env.PROXY_BEARER_TOKEN?.trim() || "";
-const DEFAULT_MODEL = process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna";
+const DEFAULT_MODEL = process.env.OPENAI_MODEL?.trim() || "gpt-6-sol";
 const TIMEOUT_MS = Number.parseInt(process.env.REQUEST_TIMEOUT_MS || "120000", 10);
 const MAX_BODY_BYTES = 1024 * 1024;
 const CODEX_URL = "https://chatgpt.com/backend-api/codex/responses";
@@ -14,7 +14,7 @@ const TOKEN_URL = "https://auth.openai.com/oauth/token";
 const OAUTH_CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann";
 const REFRESH_SKEW_MS = 60_000;
 const REFRESH_ENABLED = process.env.CODEX_REFRESH_ENABLED !== "false";
-const MODEL_CANDIDATES = ["gpt-5.5", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.6-sol"];
+const MODEL_CANDIDATES = ["gpt-5.5", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.6-sol", "gpt-6-luna", "gpt-6-sol", "gpt-6-astra"];
 
 function send(res, status, payload) {
   res.statusCode = status;
@@ -165,6 +165,7 @@ export function buildUpstreamBody(body) {
     "context_management",
     "prompt_cache_key",
     "prompt_cache_retention",
+    "prompt_cache_options",
   ]) addIfDefined(upstreamBody, body, field);
   return upstreamBody;
 }

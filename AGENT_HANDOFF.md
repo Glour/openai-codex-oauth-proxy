@@ -31,17 +31,16 @@ continues to call `POST /v1/responses`; it does not handle OAuth tokens.
 | `GET /health` | Unauthenticated local liveness response only |
 | Text input | A string or a Responses input array |
 | Tools | `tools`, `tool_choice`, and tool-call output are forwarded; the client executes tools and continues its own loop |
-| Models | `gpt-5.5`, `gpt-5.6-luna`, `gpt-5.6-terra`, `gpt-5.6-sol` |
+| Models | `gpt-6-luna`, `gpt-6-sol`, `gpt-6-astra`; legacy `gpt-5.5`, `gpt-5.6-luna`, `gpt-5.6-terra`, `gpt-5.6-sol` |
 
 The proxy does not support file input, `previous_response_id`, or concurrent
 refresh owners for one credential file.
 
 ## Model selection
 
-- `gpt-5.6-luna`: default for high-volume, bounded text operations.
-- `gpt-5.6-terra`: use when the task benefits from deeper reasoning or more
-  careful synthesis.
-- `gpt-5.6-sol`: evaluate explicitly before using it in a production path.
+- `gpt-6-luna`: high-volume, bounded text operations.
+- `gpt-6-sol`: QA analysis and synthesis.
+- `gpt-6-astra`: complex cases after workflow-specific evaluation.
 
 Choose models per workflow and measure actual result quality and latency.
 
@@ -58,7 +57,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="gpt-5.6-luna",
+    model="gpt-6-luna",
     instructions="Return concise JSON only.",
     input="Summarize this event.",
 )
@@ -76,7 +75,7 @@ const client = new OpenAI({
 });
 
 const response = await client.responses.create({
-  model: "gpt-5.6-terra",
+  model: "gpt-6-sol",
   input: "Review this text.",
 });
 console.log(response.output_text);
